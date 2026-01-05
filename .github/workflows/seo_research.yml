@@ -1,0 +1,129 @@
+name: Airbnb SEO Research
+
+on:
+  workflow_dispatch:
+    inputs:
+      # ===== PARAMÈTRES MODIFIABLES =====
+      guests:
+        description: 'Nombre de voyageurs'
+        required: true
+        type: string
+        default: '2'
+      
+      currency:
+        description: 'Devise (AED, EUR, USD...)'
+        required: false
+        type: string
+        default: 'AED'
+      
+      # ===== SCÉNARIOS À EXÉCUTER =====
+      run_all:
+        description: 'Exécuter TOUS les scénarios (true) ou sélection manuelle (false)'
+        required: true
+        type: string
+        default: 'true'
+      
+      # Si run_all = false, choisir les scénarios individuels
+      run_60j_3n:
+        description: '60 jours - 3 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_60j_5n:
+        description: '60 jours - 5 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_30j_3n:
+        description: '30 jours - 3 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_30j_5n:
+        description: '30 jours - 5 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_15j_3n:
+        description: '15 jours - 3 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_15j_5n:
+        description: '15 jours - 5 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_10j_3n:
+        description: '10 jours - 3 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_10j_5n:
+        description: '10 jours - 5 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_5j_3n:
+        description: '5 jours - 3 nuits'
+        required: false
+        type: boolean
+        default: true
+      run_5j_5n:
+        description: '5 jours - 5 nuits'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  seo_research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 heures max
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyairbnb==2.1.1 curl_cffi>=0.6.0
+      
+      - name: Run SEO Research
+        env:
+          GUESTS: ${{ inputs.guests }}
+          CURRENCY: ${{ inputs.currency }}
+          RUN_ALL: ${{ inputs.run_all }}
+          RUN_60J_3N: ${{ inputs.run_60j_3n }}
+          RUN_60J_5N: ${{ inputs.run_60j_5n }}
+          RUN_30J_3N: ${{ inputs.run_30j_3n }}
+          RUN_30J_5N: ${{ inputs.run_30j_5n }}
+          RUN_15J_3N: ${{ inputs.run_15j_3n }}
+          RUN_15J_5N: ${{ inputs.run_15j_5n }}
+          RUN_10J_3N: ${{ inputs.run_10j_3n }}
+          RUN_10J_5N: ${{ inputs.run_10j_5n }}
+          RUN_5J_3N: ${{ inputs.run_5j_3n }}
+          RUN_5J_5N: ${{ inputs.run_5j_5n }}
+        run: python seo_research.py
+      
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-research-data
+          path: seo_research_*.csv
+      
+      - name: Commit results
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add seo_research_*.csv || true
+          git commit -m "SEO Research data $(date +'%Y-%m-%d %H:%M')" || true
+          git push || true
