@@ -1,4 +1,4 @@
-name: Debug pyairbnb Details
+name: Debug Amenities Complet
 
 on:
   workflow_dispatch:
@@ -18,59 +18,68 @@ jobs:
         run: |
           pip install pyairbnb==2.1.1 curl_cffi>=0.6.0
       
-      - name: Run Debug Script
+      - name: Run Debug Amenities
         run: |
           python << 'EOF'
           import json
           import pyairbnb
 
-          ROOM_ID = "1149961985722988324"
+          # Tester plusieurs listings pour avoir une liste complete
+          ROOM_IDS = [
+              "1149961985722988324",
+              "1047034344941569498",
+              "53219622"
+          ]
 
-          print("=" * 80)
-          print("DEBUG - Structure de pyairbnb.get_details()")
-          print("=" * 80)
+          all_amenities = set()
 
-          details = pyairbnb.get_details(
-              room_id=ROOM_ID,
-              currency="AED",
-              proxy_url="",
-              language="en",
-          )
+          for room_id in ROOM_IDS:
+              print(f"\n{'='*80}")
+              print(f"ROOM ID: {room_id}")
+              print("="*80)
+              
+              try:
+                  details = pyairbnb.get_details(
+                      room_id=room_id,
+                      currency="AED",
+                      proxy_url="",
+                      language="en",
+                  )
+                  
+                  if not details:
+                      print("Aucun detail")
+                      continue
+                  
+                  amenities = details.get("amenities", [])
+                  print(f"\nNombre de categories: {len(amenities)}")
+                  
+                  for category in amenities:
+                      if isinstance(category, dict):
+                          cat_title = category.get("title", "")
+                          print(f"\n=== CATEGORIE: {cat_title} ===")
+                          
+                          values = category.get("values", [])
+                          for item in values:
+                              if isinstance(item, dict):
+                                  title = item.get("title", "")
+                                  subtitle = item.get("subtitle", "")
+                                  available = item.get("available", True)
+                                  
+                                  status = "✅" if available else "❌"
+                                  print(f"  {status} {title}")
+                                  if subtitle:
+                                      print(f"      -> {subtitle}")
+                                  
+                                  all_amenities.add(title)
+                      
+              except Exception as e:
+                  print(f"Erreur: {e}")
 
-          if not details:
-              print("Aucun detail")
-              exit()
-
-          print("\n=== CLES DE PREMIER NIVEAU ===")
-          for key in sorted(details.keys()):
-              value = details[key]
-              if isinstance(value, dict):
-                  print(f"  {key}: dict ({len(value)} cles)")
-              elif isinstance(value, list):
-                  print(f"  {key}: list ({len(value)} elements)")
-              else:
-                  print(f"  {key}: {str(value)[:80]}")
-
-          print("\n=== RECHERCHE min/max/night/cancel/instant/amenities ===")
+          print("\n" + "="*80)
+          print("LISTE COMPLETE DE TOUS LES AMENITIES UNIQUES")
+          print("="*80)
+          for am in sorted(all_amenities):
+              print(f"  - {am}")
           
-          def search_keys(d, prefix=""):
-              results = []
-              if isinstance(d, dict):
-                  for k, v in d.items():
-                      path = f"{prefix}.{k}" if prefix else k
-                      k_lower = k.lower()
-                      if any(x in k_lower for x in ["min", "max", "night", "cancel", "instant", "amenity", "amenities", "pool", "gym", "parking", "book"]):
-                          results.append((path, v))
-                      if isinstance(v, dict):
-                          results.extend(search_keys(v, path))
-                      elif isinstance(v, list) and v and isinstance(v[0], dict):
-                          results.extend(search_keys(v[0], f"{path}[0]"))
-              return results
-
-          found = search_keys(details)
-          for path, val in found:
-              print(f"  {path} = {str(val)[:100]}")
-
-          print("\n=== JSON COMPLET ===")
-          print(json.dumps(details, indent=2, default=str))
+          print(f"\nTotal: {len(all_amenities)} amenities uniques")
           EOF
