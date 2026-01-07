@@ -348,12 +348,122 @@ def extract_details(details):
         # === NOUVELLES VARIABLES ===
         "instant_book": False,
         "cancellation_policy": "",
-        "has_pool": False,
-        "has_gym": False,
-        "has_parking": False,
-        "amenities_count": 0,
         "min_nights": "",
         "max_nights": "",
+        "amenities_count": 0,
+        # === TOUTES LES AMENITIES (80+) ===
+        # Essentiels
+        "has_wifi": False,
+        "has_kitchen": False,
+        "has_washer": False,
+        "has_dryer": False,
+        "has_air_conditioning": False,
+        "has_heating": False,
+        "has_tv": False,
+        "has_hair_dryer": False,
+        "has_iron": False,
+        "has_hangers": False,
+        "has_essentials": False,
+        "has_shampoo": False,
+        "has_hot_water": False,
+        # Parking
+        "has_free_parking": False,
+        "has_paid_parking": False,
+        "has_street_parking": False,
+        "has_garage": False,
+        "has_ev_charger": False,
+        # Extérieur / Loisirs
+        "has_pool": False,
+        "has_private_pool": False,
+        "has_shared_pool": False,
+        "has_hot_tub": False,
+        "has_gym": False,
+        "has_bbq_grill": False,
+        "has_outdoor_furniture": False,
+        "has_outdoor_dining": False,
+        "has_patio_balcony": False,
+        "has_garden": False,
+        "has_backyard": False,
+        "has_fire_pit": False,
+        "has_beach_access": False,
+        "has_lake_access": False,
+        "has_ski_in_out": False,
+        # Vues
+        "has_city_view": False,
+        "has_mountain_view": False,
+        "has_ocean_view": False,
+        "has_sea_view": False,
+        "has_lake_view": False,
+        "has_garden_view": False,
+        "has_pool_view": False,
+        # Cuisine
+        "has_coffee_maker": False,
+        "has_espresso_machine": False,
+        "has_oven": False,
+        "has_stove": False,
+        "has_microwave": False,
+        "has_refrigerator": False,
+        "has_freezer": False,
+        "has_dishwasher": False,
+        "has_dishes_silverware": False,
+        "has_cooking_basics": False,
+        # Salle de bain
+        "has_bathtub": False,
+        "has_shower": False,
+        "has_bidet": False,
+        "has_body_soap": False,
+        "has_conditioner": False,
+        "has_cleaning_products": False,
+        # Chambre / Confort
+        "has_bed_linens": False,
+        "has_extra_pillows": False,
+        "has_blackout_shades": False,
+        "has_safe": False,
+        "has_fireplace": False,
+        "has_ceiling_fan": False,
+        # Travail / Bureau
+        "has_workspace": False,
+        "has_desk": False,
+        # Famille / Enfants
+        "has_crib": False,
+        "has_high_chair": False,
+        "has_baby_safety_gates": False,
+        "has_children_books_toys": False,
+        "has_baby_bath": False,
+        # Sécurité
+        "has_smoke_alarm": False,
+        "has_carbon_monoxide_alarm": False,
+        "has_fire_extinguisher": False,
+        "has_first_aid_kit": False,
+        "has_security_cameras": False,
+        "has_lock_on_door": False,
+        # Arrivée / Départ
+        "has_self_checkin": False,
+        "has_lockbox": False,
+        "has_smart_lock": False,
+        "has_doorman": False,
+        # Animaux
+        "has_pets_allowed": False,
+        # Accessibilité
+        "has_step_free_entrance": False,
+        "has_wide_entrance": False,
+        "has_accessible_parking": False,
+        "has_grab_bars": False,
+        "has_elevator": False,
+        # Divertissement
+        "has_netflix": False,
+        "has_streaming_service": False,
+        "has_cable_tv": False,
+        "has_game_console": False,
+        "has_books": False,
+        "has_board_games": False,
+        # Autres
+        "has_breakfast": False,
+        "has_long_term_stays": False,
+        "has_luggage_dropoff": False,
+        "has_private_entrance": False,
+        "has_sauna": False,
+        "has_piano": False,
     }
     
     if not details:
@@ -513,26 +623,154 @@ def extract_details(details):
         elif details.get("maximum_nights"):
             result["max_nights"] = str(details["maximum_nights"])
     
-    # Équipements (amenities)
+    # Équipements (amenities) - DETECTION COMPLETE
     amenities = details.get("amenities", [])
+    all_amenity_titles = []
+    
+    # Extraire tous les titres d'amenities (structure: [{title, values: [{title, available}]}])
     if isinstance(amenities, list):
-        result["amenities_count"] = len(amenities)
-        
-        # Convertir en texte pour recherche
-        amenities_lower = [str(a).lower() for a in amenities]
-        amenities_str = " ".join(amenities_lower)
-        
-        # Piscine
-        if any(word in amenities_str for word in ["pool", "piscine", "swimming"]):
-            result["has_pool"] = True
-        
-        # Salle de sport
-        if any(word in amenities_str for word in ["gym", "fitness", "sport", "exercise", "workout"]):
-            result["has_gym"] = True
-        
-        # Parking
-        if any(word in amenities_str for word in ["parking", "garage", "stationnement"]):
-            result["has_parking"] = True
+        for category in amenities:
+            if isinstance(category, dict):
+                values = category.get("values", [])
+                if isinstance(values, list):
+                    for item in values:
+                        if isinstance(item, dict):
+                            title = item.get("title", "")
+                            available = item.get("available", True)
+                            if title and available:
+                                all_amenity_titles.append(title.lower())
+    
+    result["amenities_count"] = len(all_amenity_titles)
+    amenities_str = " ".join(all_amenity_titles)
+    
+    # === DETECTION DE CHAQUE AMENITY ===
+    
+    # Essentiels
+    result["has_wifi"] = any(x in amenities_str for x in ["wifi", "wi-fi", "internet", "wireless"])
+    result["has_kitchen"] = "kitchen" in amenities_str
+    result["has_washer"] = any(x in amenities_str for x in ["washer", "washing machine", "laveuse", "lave-linge"])
+    result["has_dryer"] = any(x in amenities_str for x in ["dryer", "sèche-linge", "séchoir"])
+    result["has_air_conditioning"] = any(x in amenities_str for x in ["air conditioning", "air conditioner", "ac", "climatisation", "a/c"])
+    result["has_heating"] = any(x in amenities_str for x in ["heating", "heater", "chauffage", "central heating"])
+    result["has_tv"] = any(x in amenities_str for x in [" tv", "television", "télévision", "téléviseur", "hdtv"])
+    result["has_hair_dryer"] = any(x in amenities_str for x in ["hair dryer", "hairdryer", "sèche-cheveux"])
+    result["has_iron"] = any(x in amenities_str for x in ["iron", "fer à repasser"])
+    result["has_hangers"] = "hanger" in amenities_str
+    result["has_essentials"] = "essential" in amenities_str
+    result["has_shampoo"] = "shampoo" in amenities_str
+    result["has_hot_water"] = "hot water" in amenities_str
+    
+    # Parking
+    result["has_free_parking"] = any(x in amenities_str for x in ["free parking", "parking gratuit", "free on-site parking", "free garage"])
+    result["has_paid_parking"] = any(x in amenities_str for x in ["paid parking", "parking payant", "parking fee"])
+    result["has_street_parking"] = "street parking" in amenities_str
+    result["has_garage"] = "garage" in amenities_str
+    result["has_ev_charger"] = any(x in amenities_str for x in ["ev charger", "electric vehicle", "charging station", "borne de recharge"])
+    
+    # Extérieur / Loisirs
+    result["has_pool"] = "pool" in amenities_str
+    result["has_private_pool"] = any(x in amenities_str for x in ["private pool", "piscine privée"])
+    result["has_shared_pool"] = any(x in amenities_str for x in ["shared pool", "piscine partagée", "communal pool"])
+    result["has_hot_tub"] = any(x in amenities_str for x in ["hot tub", "jacuzzi", "spa", "whirlpool", "bain à remous"])
+    result["has_gym"] = any(x in amenities_str for x in ["gym", "fitness", "exercise", "workout", "sport", "fitness center", "salle de sport"])
+    result["has_bbq_grill"] = any(x in amenities_str for x in ["bbq", "grill", "barbecue", "barbeque"])
+    result["has_outdoor_furniture"] = any(x in amenities_str for x in ["outdoor furniture", "patio furniture", "garden furniture"])
+    result["has_outdoor_dining"] = any(x in amenities_str for x in ["outdoor dining", "al fresco", "dîner extérieur"])
+    result["has_patio_balcony"] = any(x in amenities_str for x in ["patio", "balcony", "balcon", "terrace", "terrasse", "deck"])
+    result["has_garden"] = any(x in amenities_str for x in ["garden", "jardin", "yard"])
+    result["has_backyard"] = any(x in amenities_str for x in ["backyard", "back yard", "arrière-cour"])
+    result["has_fire_pit"] = any(x in amenities_str for x in ["fire pit", "firepit", "foyer extérieur"])
+    result["has_beach_access"] = any(x in amenities_str for x in ["beach access", "beachfront", "plage"])
+    result["has_lake_access"] = any(x in amenities_str for x in ["lake access", "lakefront", "waterfront"])
+    result["has_ski_in_out"] = any(x in amenities_str for x in ["ski-in", "ski-out", "ski in", "ski out"])
+    
+    # Vues
+    result["has_city_view"] = any(x in amenities_str for x in ["city view", "city skyline", "vue sur la ville", "urban view"])
+    result["has_mountain_view"] = any(x in amenities_str for x in ["mountain view", "vue montagne"])
+    result["has_ocean_view"] = any(x in amenities_str for x in ["ocean view", "vue océan", "sea view"])
+    result["has_sea_view"] = any(x in amenities_str for x in ["sea view", "vue mer"])
+    result["has_lake_view"] = any(x in amenities_str for x in ["lake view", "vue lac"])
+    result["has_garden_view"] = any(x in amenities_str for x in ["garden view", "vue jardin"])
+    result["has_pool_view"] = any(x in amenities_str for x in ["pool view", "vue piscine"])
+    
+    # Cuisine
+    result["has_coffee_maker"] = any(x in amenities_str for x in ["coffee maker", "coffee machine", "cafetière", "nespresso", "keurig"])
+    result["has_espresso_machine"] = any(x in amenities_str for x in ["espresso", "expresso"])
+    result["has_oven"] = any(x in amenities_str for x in [" oven", "four"])
+    result["has_stove"] = any(x in amenities_str for x in ["stove", "cooktop", "plaque", "cuisinière", "hob"])
+    result["has_microwave"] = any(x in amenities_str for x in ["microwave", "micro-onde"])
+    result["has_refrigerator"] = any(x in amenities_str for x in ["refrigerator", "fridge", "réfrigérateur", "frigo"])
+    result["has_freezer"] = "freezer" in amenities_str or "congélateur" in amenities_str
+    result["has_dishwasher"] = any(x in amenities_str for x in ["dishwasher", "lave-vaisselle"])
+    result["has_dishes_silverware"] = any(x in amenities_str for x in ["dishes", "silverware", "utensils", "cutlery", "vaisselle", "couverts"])
+    result["has_cooking_basics"] = any(x in amenities_str for x in ["cooking basics", "pots", "pans", "oil", "salt"])
+    
+    # Salle de bain
+    result["has_bathtub"] = any(x in amenities_str for x in ["bathtub", "bath tub", "tub", "baignoire"])
+    result["has_shower"] = "shower" in amenities_str or "douche" in amenities_str
+    result["has_bidet"] = "bidet" in amenities_str
+    result["has_body_soap"] = any(x in amenities_str for x in ["body soap", "soap", "savon"])
+    result["has_conditioner"] = "conditioner" in amenities_str
+    result["has_cleaning_products"] = any(x in amenities_str for x in ["cleaning products", "cleaning supplies"])
+    
+    # Chambre / Confort
+    result["has_bed_linens"] = any(x in amenities_str for x in ["bed linen", "linens", "sheets", "draps"])
+    result["has_extra_pillows"] = any(x in amenities_str for x in ["extra pillows", "pillow", "oreiller"])
+    result["has_blackout_shades"] = any(x in amenities_str for x in ["blackout", "room-darkening", "rideaux occultants"])
+    result["has_safe"] = any(x in amenities_str for x in [" safe", "coffre-fort", "security box"]) and "safety" not in amenities_str
+    result["has_fireplace"] = any(x in amenities_str for x in ["fireplace", "cheminée", "indoor fireplace"])
+    result["has_ceiling_fan"] = any(x in amenities_str for x in ["ceiling fan", "ventilateur"])
+    
+    # Travail / Bureau
+    result["has_workspace"] = any(x in amenities_str for x in ["workspace", "work space", "dedicated workspace", "espace de travail", "laptop-friendly"])
+    result["has_desk"] = any(x in amenities_str for x in ["desk", "bureau", "office"])
+    
+    # Famille / Enfants
+    result["has_crib"] = any(x in amenities_str for x in ["crib", "cot", "berceau", "lit bébé", "pack 'n play"])
+    result["has_high_chair"] = any(x in amenities_str for x in ["high chair", "highchair", "chaise haute"])
+    result["has_baby_safety_gates"] = any(x in amenities_str for x in ["baby gate", "safety gate", "barrière"])
+    result["has_children_books_toys"] = any(x in amenities_str for x in ["children's books", "toys", "jouets", "kids"])
+    result["has_baby_bath"] = any(x in amenities_str for x in ["baby bath", "bain bébé"])
+    
+    # Sécurité
+    result["has_smoke_alarm"] = any(x in amenities_str for x in ["smoke alarm", "smoke detector", "détecteur de fumée"])
+    result["has_carbon_monoxide_alarm"] = any(x in amenities_str for x in ["carbon monoxide", "co alarm", "co detector", "monoxyde de carbone"])
+    result["has_fire_extinguisher"] = any(x in amenities_str for x in ["fire extinguisher", "extincteur"])
+    result["has_first_aid_kit"] = any(x in amenities_str for x in ["first aid", "premiers secours", "first-aid"])
+    result["has_security_cameras"] = any(x in amenities_str for x in ["security camera", "camera", "surveillance", "caméra"])
+    result["has_lock_on_door"] = any(x in amenities_str for x in ["lock on", "door lock", "verrou", "bedroom lock"])
+    
+    # Arrivée / Départ
+    result["has_self_checkin"] = any(x in amenities_str for x in ["self check-in", "self-check-in", "self checkin", "arrivée autonome"])
+    result["has_lockbox"] = any(x in amenities_str for x in ["lockbox", "lock box", "key box", "boîte à clés"])
+    result["has_smart_lock"] = any(x in amenities_str for x in ["smart lock", "keypad", "code", "serrure connectée", "digital lock"])
+    result["has_doorman"] = any(x in amenities_str for x in ["doorman", "concierge", "portier", "building staff"])
+    
+    # Animaux
+    result["has_pets_allowed"] = any(x in amenities_str for x in ["pets allowed", "pet-friendly", "pet friendly", "animaux acceptés", "dog", "cat"])
+    
+    # Accessibilité
+    result["has_step_free_entrance"] = any(x in amenities_str for x in ["step-free", "step free", "no stairs", "sans escalier", "wheelchair"])
+    result["has_wide_entrance"] = any(x in amenities_str for x in ["wide entrance", "wide doorway", "entrée large"])
+    result["has_accessible_parking"] = any(x in amenities_str for x in ["accessible parking", "handicap parking", "disabled parking"])
+    result["has_grab_bars"] = any(x in amenities_str for x in ["grab bar", "grab bars", "barres d'appui"])
+    result["has_elevator"] = any(x in amenities_str for x in ["elevator", "lift", "ascenseur"])
+    
+    # Divertissement
+    result["has_netflix"] = "netflix" in amenities_str
+    result["has_streaming_service"] = any(x in amenities_str for x in ["streaming", "netflix", "amazon prime", "disney+", "hulu", "hbo", "apple tv"])
+    result["has_cable_tv"] = any(x in amenities_str for x in ["cable", "câble", "satellite"])
+    result["has_game_console"] = any(x in amenities_str for x in ["game console", "playstation", "xbox", "nintendo", "ps4", "ps5", "gaming"])
+    result["has_books"] = any(x in amenities_str for x in ["books", "library", "livres", "bibliothèque", "reading"])
+    result["has_board_games"] = any(x in amenities_str for x in ["board game", "games", "jeux de société", "puzzles"])
+    
+    # Autres
+    result["has_breakfast"] = any(x in amenities_str for x in ["breakfast", "petit-déjeuner", "petit déjeuner"])
+    result["has_long_term_stays"] = any(x in amenities_str for x in ["long term", "monthly", "long-term", "28+ days"])
+    result["has_luggage_dropoff"] = any(x in amenities_str for x in ["luggage dropoff", "luggage storage", "baggage"])
+    result["has_private_entrance"] = any(x in amenities_str for x in ["private entrance", "entrée privée", "separate entrance"])
+    result["has_sauna"] = "sauna" in amenities_str
+    result["has_piano"] = "piano" in amenities_str
     
     return result
 
@@ -653,12 +891,122 @@ def export_to_csv(all_listings, filename):
         # === NOUVELLES COLONNES ===
         "instant_book",
         "cancellation_policy",
-        "has_pool",
-        "has_gym",
-        "has_parking",
-        "amenities_count",
         "min_nights",
         "max_nights",
+        "amenities_count",
+        # === TOUTES LES AMENITIES ===
+        # Essentiels
+        "has_wifi",
+        "has_kitchen",
+        "has_washer",
+        "has_dryer",
+        "has_air_conditioning",
+        "has_heating",
+        "has_tv",
+        "has_hair_dryer",
+        "has_iron",
+        "has_hangers",
+        "has_essentials",
+        "has_shampoo",
+        "has_hot_water",
+        # Parking
+        "has_free_parking",
+        "has_paid_parking",
+        "has_street_parking",
+        "has_garage",
+        "has_ev_charger",
+        # Extérieur / Loisirs
+        "has_pool",
+        "has_private_pool",
+        "has_shared_pool",
+        "has_hot_tub",
+        "has_gym",
+        "has_bbq_grill",
+        "has_outdoor_furniture",
+        "has_outdoor_dining",
+        "has_patio_balcony",
+        "has_garden",
+        "has_backyard",
+        "has_fire_pit",
+        "has_beach_access",
+        "has_lake_access",
+        "has_ski_in_out",
+        # Vues
+        "has_city_view",
+        "has_mountain_view",
+        "has_ocean_view",
+        "has_sea_view",
+        "has_lake_view",
+        "has_garden_view",
+        "has_pool_view",
+        # Cuisine
+        "has_coffee_maker",
+        "has_espresso_machine",
+        "has_oven",
+        "has_stove",
+        "has_microwave",
+        "has_refrigerator",
+        "has_freezer",
+        "has_dishwasher",
+        "has_dishes_silverware",
+        "has_cooking_basics",
+        # Salle de bain
+        "has_bathtub",
+        "has_shower",
+        "has_bidet",
+        "has_body_soap",
+        "has_conditioner",
+        "has_cleaning_products",
+        # Chambre / Confort
+        "has_bed_linens",
+        "has_extra_pillows",
+        "has_blackout_shades",
+        "has_safe",
+        "has_fireplace",
+        "has_ceiling_fan",
+        # Travail / Bureau
+        "has_workspace",
+        "has_desk",
+        # Famille / Enfants
+        "has_crib",
+        "has_high_chair",
+        "has_baby_safety_gates",
+        "has_children_books_toys",
+        "has_baby_bath",
+        # Sécurité
+        "has_smoke_alarm",
+        "has_carbon_monoxide_alarm",
+        "has_fire_extinguisher",
+        "has_first_aid_kit",
+        "has_security_cameras",
+        "has_lock_on_door",
+        # Arrivée / Départ
+        "has_self_checkin",
+        "has_lockbox",
+        "has_smart_lock",
+        "has_doorman",
+        # Animaux
+        "has_pets_allowed",
+        # Accessibilité
+        "has_step_free_entrance",
+        "has_wide_entrance",
+        "has_accessible_parking",
+        "has_grab_bars",
+        "has_elevator",
+        # Divertissement
+        "has_netflix",
+        "has_streaming_service",
+        "has_cable_tv",
+        "has_game_console",
+        "has_books",
+        "has_board_games",
+        # Autres
+        "has_breakfast",
+        "has_long_term_stays",
+        "has_luggage_dropoff",
+        "has_private_entrance",
+        "has_sauna",
+        "has_piano",
     ]
     
     with open(filename, "w", newline="", encoding="utf-8") as f:
@@ -748,18 +1096,29 @@ def main():
         superhosts = sum(1 for l in all_listings if l.get("is_superhost"))
         guest_favorites = sum(1 for l in all_listings if l.get("is_guest_favorite"))
         instant_books = sum(1 for l in all_listings if l.get("instant_book"))
-        has_pools = sum(1 for l in all_listings if l.get("has_pool"))
-        has_gyms = sum(1 for l in all_listings if l.get("has_gym"))
-        has_parkings = sum(1 for l in all_listings if l.get("has_parking"))
         
         print(f"\n📈 STATISTIQUES GLOBALES:")
         print(f"   • Superhosts: {superhosts} ({100*superhosts/len(all_listings):.1f}%)")
         print(f"   • Guest Favorites: {guest_favorites} ({100*guest_favorites/len(all_listings):.1f}%)")
-        print(f"\n📈 NOUVELLES VARIABLES:")
         print(f"   • Instant Book: {instant_books} ({100*instant_books/len(all_listings):.1f}%)")
-        print(f"   • Avec piscine: {has_pools} ({100*has_pools/len(all_listings):.1f}%)")
-        print(f"   • Avec gym: {has_gyms} ({100*has_gyms/len(all_listings):.1f}%)")
-        print(f"   • Avec parking: {has_parkings} ({100*has_parkings/len(all_listings):.1f}%)")
+        
+        # Top amenities
+        amenity_stats = {
+            "WiFi": sum(1 for l in all_listings if l.get("has_wifi")),
+            "Kitchen": sum(1 for l in all_listings if l.get("has_kitchen")),
+            "Pool": sum(1 for l in all_listings if l.get("has_pool")),
+            "Gym": sum(1 for l in all_listings if l.get("has_gym")),
+            "AC": sum(1 for l in all_listings if l.get("has_air_conditioning")),
+            "Parking": sum(1 for l in all_listings if l.get("has_free_parking")),
+            "Washer": sum(1 for l in all_listings if l.get("has_washer")),
+            "TV": sum(1 for l in all_listings if l.get("has_tv")),
+            "Workspace": sum(1 for l in all_listings if l.get("has_workspace")),
+            "Elevator": sum(1 for l in all_listings if l.get("has_elevator")),
+        }
+        
+        print(f"\n📈 TOP AMENITIES:")
+        for name, count in sorted(amenity_stats.items(), key=lambda x: x[1], reverse=True):
+            print(f"   • {name}: {count} ({100*count/len(all_listings):.1f}%)")
         
         # Stats politiques d'annulation
         policies = {}
