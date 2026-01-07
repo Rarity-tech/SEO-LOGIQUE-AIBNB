@@ -454,13 +454,25 @@ def extract_details(details):
     # NOUVELLES VARIABLES
     # ==========================================================================
     
-    # Instant Book
-    if details.get("is_instant_bookable"):
-        result["instant_book"] = True
-    elif details.get("instant_book"):
-        result["instant_book"] = True
-    elif details.get("instant_bookable"):
-        result["instant_book"] = True
+    # Instant Book - chemin: host_details.data.presentation.userProfileContainer.userProfile.managedListings[0].instantBookEnabled
+    try:
+        host_details = details.get("host_details", {})
+        if isinstance(host_details, dict):
+            data = host_details.get("data", {})
+            presentation = data.get("presentation", {})
+            user_profile_container = presentation.get("userProfileContainer", {})
+            user_profile = user_profile_container.get("userProfile", {})
+            managed_listings = user_profile.get("managedListings", [])
+            if managed_listings and len(managed_listings) > 0:
+                if managed_listings[0].get("instantBookEnabled"):
+                    result["instant_book"] = True
+    except:
+        pass
+    
+    # Fallback pour instant book
+    if not result["instant_book"]:
+        if details.get("is_instant_bookable") or details.get("instant_book") or details.get("instant_bookable"):
+            result["instant_book"] = True
     
     # Politique d'annulation
     cancel_policy = details.get("cancellation_policy")
@@ -473,16 +485,33 @@ def extract_details(details):
         elif isinstance(cancel_policy, str):
             result["cancellation_policy"] = cancel_policy
     
-    # Min/Max nuits
-    if details.get("min_nights"):
-        result["min_nights"] = str(details["min_nights"])
-    elif details.get("minimum_nights"):
-        result["min_nights"] = str(details["minimum_nights"])
+    # Min/Max nuits - chemin: calendar[0].days[0].minNights / maxNights
+    try:
+        calendar = details.get("calendar", [])
+        if calendar and len(calendar) > 0:
+            days = calendar[0].get("days", [])
+            if days and len(days) > 0:
+                min_n = days[0].get("minNights")
+                max_n = days[0].get("maxNights")
+                if min_n is not None:
+                    result["min_nights"] = str(min_n)
+                if max_n is not None:
+                    result["max_nights"] = str(max_n)
+    except:
+        pass
     
-    if details.get("max_nights"):
-        result["max_nights"] = str(details["max_nights"])
-    elif details.get("maximum_nights"):
-        result["max_nights"] = str(details["maximum_nights"])
+    # Fallback pour min/max nuits
+    if not result["min_nights"]:
+        if details.get("min_nights"):
+            result["min_nights"] = str(details["min_nights"])
+        elif details.get("minimum_nights"):
+            result["min_nights"] = str(details["minimum_nights"])
+    
+    if not result["max_nights"]:
+        if details.get("max_nights"):
+            result["max_nights"] = str(details["max_nights"])
+        elif details.get("maximum_nights"):
+            result["max_nights"] = str(details["maximum_nights"])
     
     # Équipements (amenities)
     amenities = details.get("amenities", [])
