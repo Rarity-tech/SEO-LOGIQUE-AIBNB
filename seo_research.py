@@ -8,6 +8,16 @@ de dates pour comprendre l'algorithme de ranking Airbnb.
 
 Zone fixe : Downtown Dubai (placeId)
 Variables : jours avant check-in (60, 30, 15, 10, 5) × durée (3, 5 nuits)
+
+NOUVELLES VARIABLES AJOUTÉES :
+- instant_book : Réservation instantanée activée
+- cancellation_policy : Politique d'annulation
+- has_pool : Piscine disponible
+- has_gym : Salle de sport disponible
+- has_parking : Parking disponible
+- amenities_count : Nombre total d'équipements
+- min_nights : Nombre minimum de nuits
+- max_nights : Nombre maximum de nuits
 =============================================================================
 """
 
@@ -315,6 +325,7 @@ def get_listing_details(room_id):
 def extract_details(details):
     """Extrait les informations pertinentes des détails du listing."""
     result = {
+        # Variables existantes
         "room_type": "",
         "bedrooms": "",
         "beds": "",
@@ -334,6 +345,15 @@ def extract_details(details):
         "is_guest_favorite": False,
         "top_percent": "",
         "badges": "",
+        # === NOUVELLES VARIABLES ===
+        "instant_book": False,
+        "cancellation_policy": "",
+        "has_pool": False,
+        "has_gym": False,
+        "has_parking": False,
+        "amenities_count": 0,
+        "min_nights": "",
+        "max_nights": "",
     }
     
     if not details:
@@ -429,6 +449,61 @@ def extract_details(details):
         final_badges.append(f"Top {result['top_percent']}%")
     
     result["badges"] = " | ".join(final_badges)
+    
+    # ==========================================================================
+    # NOUVELLES VARIABLES
+    # ==========================================================================
+    
+    # Instant Book
+    if details.get("is_instant_bookable"):
+        result["instant_book"] = True
+    elif details.get("instant_book"):
+        result["instant_book"] = True
+    elif details.get("instant_bookable"):
+        result["instant_book"] = True
+    
+    # Politique d'annulation
+    cancel_policy = details.get("cancellation_policy")
+    if cancel_policy:
+        if isinstance(cancel_policy, dict):
+            result["cancellation_policy"] = cancel_policy.get("name", "") or \
+                                            cancel_policy.get("policy_name", "") or \
+                                            cancel_policy.get("category", "") or \
+                                            cancel_policy.get("type", "")
+        elif isinstance(cancel_policy, str):
+            result["cancellation_policy"] = cancel_policy
+    
+    # Min/Max nuits
+    if details.get("min_nights"):
+        result["min_nights"] = str(details["min_nights"])
+    elif details.get("minimum_nights"):
+        result["min_nights"] = str(details["minimum_nights"])
+    
+    if details.get("max_nights"):
+        result["max_nights"] = str(details["max_nights"])
+    elif details.get("maximum_nights"):
+        result["max_nights"] = str(details["maximum_nights"])
+    
+    # Équipements (amenities)
+    amenities = details.get("amenities", [])
+    if isinstance(amenities, list):
+        result["amenities_count"] = len(amenities)
+        
+        # Convertir en texte pour recherche
+        amenities_lower = [str(a).lower() for a in amenities]
+        amenities_str = " ".join(amenities_lower)
+        
+        # Piscine
+        if any(word in amenities_str for word in ["pool", "piscine", "swimming"]):
+            result["has_pool"] = True
+        
+        # Salle de sport
+        if any(word in amenities_str for word in ["gym", "fitness", "sport", "exercise", "workout"]):
+            result["has_gym"] = True
+        
+        # Parking
+        if any(word in amenities_str for word in ["parking", "garage", "stationnement"]):
+            result["has_parking"] = True
     
     return result
 
@@ -546,6 +621,15 @@ def export_to_csv(all_listings, filename):
         "is_guest_favorite",
         "top_percent",
         "badges",
+        # === NOUVELLES COLONNES ===
+        "instant_book",
+        "cancellation_policy",
+        "has_pool",
+        "has_gym",
+        "has_parking",
+        "amenities_count",
+        "min_nights",
+        "max_nights",
     ]
     
     with open(filename, "w", newline="", encoding="utf-8") as f:
@@ -631,12 +715,34 @@ def main():
         print(f"   • {run_id}: {count} listings")
     
     # Stats globales
-    superhosts = sum(1 for l in all_listings if l.get("is_superhost"))
-    guest_favorites = sum(1 for l in all_listings if l.get("is_guest_favorite"))
-    
-    print(f"\n📈 STATISTIQUES GLOBALES:")
-    print(f"   • Superhosts: {superhosts} ({100*superhosts/len(all_listings):.1f}%)" if all_listings else "")
-    print(f"   • Guest Favorites: {guest_favorites} ({100*guest_favorites/len(all_listings):.1f}%)" if all_listings else "")
+    if all_listings:
+        superhosts = sum(1 for l in all_listings if l.get("is_superhost"))
+        guest_favorites = sum(1 for l in all_listings if l.get("is_guest_favorite"))
+        instant_books = sum(1 for l in all_listings if l.get("instant_book"))
+        has_pools = sum(1 for l in all_listings if l.get("has_pool"))
+        has_gyms = sum(1 for l in all_listings if l.get("has_gym"))
+        has_parkings = sum(1 for l in all_listings if l.get("has_parking"))
+        
+        print(f"\n📈 STATISTIQUES GLOBALES:")
+        print(f"   • Superhosts: {superhosts} ({100*superhosts/len(all_listings):.1f}%)")
+        print(f"   • Guest Favorites: {guest_favorites} ({100*guest_favorites/len(all_listings):.1f}%)")
+        print(f"\n📈 NOUVELLES VARIABLES:")
+        print(f"   • Instant Book: {instant_books} ({100*instant_books/len(all_listings):.1f}%)")
+        print(f"   • Avec piscine: {has_pools} ({100*has_pools/len(all_listings):.1f}%)")
+        print(f"   • Avec gym: {has_gyms} ({100*has_gyms/len(all_listings):.1f}%)")
+        print(f"   • Avec parking: {has_parkings} ({100*has_parkings/len(all_listings):.1f}%)")
+        
+        # Stats politiques d'annulation
+        policies = {}
+        for l in all_listings:
+            policy = l.get("cancellation_policy", "")
+            if policy:
+                policies[policy] = policies.get(policy, 0) + 1
+        
+        if policies:
+            print(f"\n📈 POLITIQUES D'ANNULATION:")
+            for policy, count in sorted(policies.items(), key=lambda x: x[1], reverse=True)[:5]:
+                print(f"   • {policy}: {count} ({100*count/len(all_listings):.1f}%)")
     
     print(f"\n📁 Fichier: {filename}")
     print("=" * 80)
