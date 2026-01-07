@@ -1,0 +1,76 @@
+name: Debug pyairbnb Details
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyairbnb==2.1.1 curl_cffi>=0.6.0
+      
+      - name: Run Debug Script
+        run: |
+          python << 'EOF'
+          import json
+          import pyairbnb
+
+          ROOM_ID = "1149961985722988324"
+
+          print("=" * 80)
+          print("DEBUG - Structure de pyairbnb.get_details()")
+          print("=" * 80)
+
+          details = pyairbnb.get_details(
+              room_id=ROOM_ID,
+              currency="AED",
+              proxy_url="",
+              language="en",
+          )
+
+          if not details:
+              print("Aucun detail")
+              exit()
+
+          print("\n=== CLES DE PREMIER NIVEAU ===")
+          for key in sorted(details.keys()):
+              value = details[key]
+              if isinstance(value, dict):
+                  print(f"  {key}: dict ({len(value)} cles)")
+              elif isinstance(value, list):
+                  print(f"  {key}: list ({len(value)} elements)")
+              else:
+                  print(f"  {key}: {str(value)[:80]}")
+
+          print("\n=== RECHERCHE min/max/night/cancel/instant/amenities ===")
+          
+          def search_keys(d, prefix=""):
+              results = []
+              if isinstance(d, dict):
+                  for k, v in d.items():
+                      path = f"{prefix}.{k}" if prefix else k
+                      k_lower = k.lower()
+                      if any(x in k_lower for x in ["min", "max", "night", "cancel", "instant", "amenity", "amenities", "pool", "gym", "parking", "book"]):
+                          results.append((path, v))
+                      if isinstance(v, dict):
+                          results.extend(search_keys(v, path))
+                      elif isinstance(v, list) and v and isinstance(v[0], dict):
+                          results.extend(search_keys(v[0], f"{path}[0]"))
+              return results
+
+          found = search_keys(details)
+          for path, val in found:
+              print(f"  {path} = {str(val)[:100]}")
+
+          print("\n=== JSON COMPLET ===")
+          print(json.dumps(details, indent=2, default=str))
+          EOF
